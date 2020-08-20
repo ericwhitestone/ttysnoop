@@ -1,0 +1,12 @@
+.tmp_versions/
+.tty_snoop.c.swp
+.tty_snoop.ko.cmd
+.tty_snoop.mod.o.cmd
+.tty_snoop.o.cmd
+Module.symvers
+modules.order
+tty_snoop.ko
+tty_snoop.mod.c
+tty_snoop.mod.o
+tty_snoop.o
+
