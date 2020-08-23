@@ -7,7 +7,7 @@ ifneq ($(KERNELRELEASE),)
 # line; invoke the kernel build system.
 else
 
-    KERNELDIR ?= /lib/modules/4.19.86-upstream/build
+    KERNELDIR ?= /lib/modules/$(shell uname -r)/build
     PWD  := $(shell pwd)
 
 default:
