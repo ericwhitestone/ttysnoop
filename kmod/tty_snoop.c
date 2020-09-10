@@ -6,23 +6,30 @@
 #include <linux/tty.h>
 #include <linux/cred.h>
 #include <linux/uidgid.h>
+#include <linux/slab.h>
 
-
-void ttysnoop_release(struct kobject *kobj) {
-       pr_info("ttysnoop releasing\n"); 
-}
-
-static struct kobj_type ttysnoop_ktype = { 
-    .release = ttysnoop_release
-};
-
-static struct ttysnoop_state {
+struct ttysnoop_state {
         /**
          * kobject for the data structure maintained by this module 
          * that will keep sysfs up to date
          */
         struct kobject ttysnoop_kobj;
-} ttysnoop_state;
+};
+
+static struct ttysnoop_state *ttysnoop_state = NULL;
+
+#define to_ttysnoop_state(x) container_of(x, struct ttysnoop_state, ttysnoop_kobj)
+void ttysnoop_release(struct kobject *kobj) {
+        struct ttysnoop_state *state = NULL;
+        state = to_ttysnoop_state(kobj);
+        kfree(state);
+        pr_info("ttysnoop releasing\n"); 
+}
+
+
+static struct kobj_type ttysnoop_ktype = { 
+    .release = ttysnoop_release
+};
 
 /**
  * This function is pulled from the kernel audit area. This served
@@ -55,11 +62,16 @@ static int ttysnoop_init(void)
         int kobj_add_err;
 
         pr_info("tty_snoop installed\n");
-        kobject_init(&ttysnoop_state.ttysnoop_kobj, &ttysnoop_ktype);
-        kobj_add_err = kobject_add(&ttysnoop_state.ttysnoop_kobj, kernel_kobj, "ttysnoop");
+        ttysnoop_state = kzalloc(sizeof(*ttysnoop_state), GFP_KERNEL);
+        if (!ttysnoop_state)
+        {
+                return -ENOMEM;
+        }
+        kobject_init(&ttysnoop_state->ttysnoop_kobj, &ttysnoop_ktype);
+        kobj_add_err = kobject_add(&ttysnoop_state->ttysnoop_kobj, kernel_kobj, "ttysnoop");
         if (kobj_add_err)
         {
-                kobject_put(&ttysnoop_state.ttysnoop_kobj);
+                kobject_put(&ttysnoop_state->ttysnoop_kobj);
                 return kobj_add_err;
         }
         for_each_process(task_it) {
@@ -73,7 +85,7 @@ static int ttysnoop_init(void)
 
 static void ttysnoop_exit(void)
 {
-        kobject_put(&ttysnoop_state.ttysnoop_kobj);
+        kobject_put(&ttysnoop_state->ttysnoop_kobj);
         pr_info("tty_snoop removed\n");
 }
 MODULE_LICENSE("GPL");
