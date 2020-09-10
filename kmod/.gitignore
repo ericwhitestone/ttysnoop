@@ -8,5 +8,7 @@ modules.order
 tty_snoop.ko
 tty_snoop.mod.c
 tty_snoop.mod.o
+*.o
+*.d
 tty_snoop.o
 

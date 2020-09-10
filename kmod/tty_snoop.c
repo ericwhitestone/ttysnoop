@@ -8,28 +8,21 @@
 #include <linux/uidgid.h>
 #include <linux/slab.h>
 
-struct ttysnoop_state {
-        /**
-         * kobject for the data structure maintained by this module 
-         * that will keep sysfs up to date
-         */
-        struct kobject ttysnoop_kobj;
-};
+static struct kobject *ttysnoop_kobj;
 
-static struct ttysnoop_state *ttysnoop_state = NULL;
-
-#define to_ttysnoop_state(x) container_of(x, struct ttysnoop_state, ttysnoop_kobj)
-void ttysnoop_release(struct kobject *kobj) {
-        struct ttysnoop_state *state = NULL;
-        state = to_ttysnoop_state(kobj);
-        kfree(state);
-        pr_info("ttysnoop releasing\n"); 
+static ssize_t ttysnoop_show (struct kobject *kobj, struct kobj_attribute *attr, char *buf) 
+{
+        return sprintf(buf, "%s", "Hello!\n");
 }
 
+static ssize_t ttysnoop_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count) 
+{
+        return 0;
+}
 
-static struct kobj_type ttysnoop_ktype = { 
-    .release = ttysnoop_release
-};
+static struct kobj_attribute ttysnoop_attr = 
+       __ATTR(ttystate, 0444,  ttysnoop_show, ttysnoop_store);
+
 
 /**
  * This function is pulled from the kernel audit area. This served
@@ -59,33 +52,35 @@ static int ttysnoop_init(void)
 {
         struct task_struct *task_it = NULL;
         struct tty_struct *tty = NULL;
-        int kobj_add_err;
+        int retval;
 
         pr_info("tty_snoop installed\n");
-        ttysnoop_state = kzalloc(sizeof(*ttysnoop_state), GFP_KERNEL);
-        if (!ttysnoop_state)
+        ttysnoop_kobj = kobject_create_and_add("ttysnoop", kernel_kobj);
+        if (!ttysnoop_kobj) 
         {
                 return -ENOMEM;
         }
-        kobject_init(&ttysnoop_state->ttysnoop_kobj, &ttysnoop_ktype);
-        kobj_add_err = kobject_add(&ttysnoop_state->ttysnoop_kobj, kernel_kobj, "ttysnoop");
-        if (kobj_add_err)
+        retval = sysfs_create_file(ttysnoop_kobj, &ttysnoop_attr)
+        if (retval)
         {
-                kobject_put(&ttysnoop_state->ttysnoop_kobj);
-                return kobj_add_err;
+                kobject_put(&ttysnoop_kobj);
         }
-        for_each_process(task_it) {
-                tty =  audit_get_tty(task_it);
-                pr_info("pid: %u, tty name: %s uid: %u\n", task_it->pid, tty->name, task_it->real_cred->uid.val);
-		audit_put_tty(tty);
-        }
+        else 
+        {
 
-        return 0;
+                for_each_process(task_it) 
+                {
+                        tty =  audit_get_tty(task_it);
+                        pr_info("pid: %u, tty name: %s uid: %u\n", task_it->pid, tty->name, task_it->real_cred->uid.val);
+                        audit_put_tty(tty);
+                }
+        }
+        return retval;
 }
 
 static void ttysnoop_exit(void)
 {
-        kobject_put(&ttysnoop_state->ttysnoop_kobj);
+        kobject_put(ttysnoop_kobj);
         pr_info("tty_snoop removed\n");
 }
 MODULE_LICENSE("GPL");
