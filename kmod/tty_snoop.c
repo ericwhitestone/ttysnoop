@@ -7,12 +7,13 @@
 #include <linux/cred.h>
 #include <linux/uidgid.h>
 #include <linux/slab.h>
+#include <linux/sysfs.h>
 
 static struct kobject *ttysnoop_kobj;
 
 static ssize_t ttysnoop_show (struct kobject *kobj, struct kobj_attribute *attr, char *buf) 
 {
-        return sprintf(buf, "%s", "Hello!\n");
+        return sprintf(buf, "Hello! Your page size is: %lu", PAGE_SIZE);
 }
 
 static ssize_t ttysnoop_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count) 
@@ -20,7 +21,7 @@ static ssize_t ttysnoop_store(struct kobject *kobj, struct kobj_attribute *attr,
         return 0;
 }
 
-static struct kobj_attribute ttysnoop_attr = 
+const static struct kobj_attribute ttysnoop_attr = 
        __ATTR(ttystate, 0444,  ttysnoop_show, ttysnoop_store);
 
 
@@ -60,10 +61,10 @@ static int ttysnoop_init(void)
         {
                 return -ENOMEM;
         }
-        retval = sysfs_create_file(ttysnoop_kobj, &ttysnoop_attr)
+        retval = sysfs_create_file(ttysnoop_kobj, &ttysnoop_attr.attr);
         if (retval)
         {
-                kobject_put(&ttysnoop_kobj);
+                kobject_put(ttysnoop_kobj);
         }
         else 
         {
